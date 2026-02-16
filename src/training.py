@@ -1,7 +1,8 @@
 # code adapted from https://github.com/matteopariset/unbalanced_sb/tree/main/udsb_f
 
 import jax
-from jax import value_and_grad, jit, tree_map # type: ignore
+from jax import value_and_grad, jit  # type: ignore
+from jax.tree_util import tree_map  # type: ignore
 import jax.random as random
 import jax.numpy as jnp
 from jax.lax import fori_loop
@@ -277,8 +278,17 @@ class Trainer:
             train_t=self.dataset.x[self.dataset.x["time"]==t_orig]["time"].values[sel_idxs]
             train_data_t = self.dataset.x[self.dataset.x["time"]==t_orig].values[sel_idxs,:-1]
 
-            outputs: VAEOutput = self.training_setup.vae_model.apply(params[1], next(rng_seq), train_t, train_data_t )
-            s_loss = sinkhorn_loss(trajs.at[t].get(), outputs.latent)
+            outputs: VAEOutput = self.training_setup.vae_model.apply(params[1], next(rng_seq), train_t, train_data_t)
+            if not self.training_setup.use_sinkhorn_latent_loss:
+                if outputs.latent.shape != trajs.at[t].get().shape:
+                    raise ValueError(
+                        "Latent MSE requires matching shapes, but got "
+                        f"{outputs.latent.shape} vs {trajs.at[t].get().shape}."
+                    )
+                s_loss = jnp.mean(mean_squared_error(trajs.at[t].get(), outputs.latent))
+            else:
+                s_loss = sinkhorn_loss(trajs.at[t].get(), outputs.latent)
+                s_loss = jnp.where(jnp.isfinite(s_loss), s_loss, jnp.nan)
             loss = loss+ s_loss 
         return jnp.mean(loss)*self.beta1
 
@@ -308,9 +318,12 @@ class Trainer:
             train_data_t = self.dataset.x[self.dataset.x["time"]==t_orig].values[sel_idxs,:-1]
 
             outputs: VAEOutput = self.training_setup.vae_model.apply(params, next(rng_seq), train_t, train_data_t)
-        
-            s_loss = sinkhorn_loss(train_data_t, outputs.logits)
-            # s_loss = jnp.mean(mean_squared_error(train_data_t, outputs.logits))
+
+            if not self.training_setup.use_sinkhorn_recon_loss:
+                s_loss = jnp.mean(mean_squared_error(train_data_t, outputs.logits))
+            else:
+                s_loss = sinkhorn_loss(train_data_t, outputs.logits)
+                s_loss = jnp.where(jnp.isfinite(s_loss), s_loss, jnp.nan)
             loss = loss+ s_loss 
         return jnp.mean(loss)*self.beta1
 

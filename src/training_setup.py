@@ -19,7 +19,8 @@ class Training_Setup:
                  ipf_mask_dead=False, reality_coefficient=0.1, paths_reuse=5, num_sde=10, resnet=False,
                  feature_spatial_loss=False, t_dim=16, vae_input_dim=1000, vae_enc_hidden_dim=[512,512], 
                  vae_dec_hidden_dim =[512,512], vae_t_dim=8, calc_latent_loss=True, calc_recon_loss=True,
-                 vae_latent_dim=64, vae_batch_size=64, killer_func=Input_Dataset.killing_function): 
+                 vae_latent_dim=64, vae_batch_size=64, use_sinkhorn_recon_loss=True,
+                 use_sinkhorn_latent_loss=True, killer_func=Input_Dataset.killing_function): 
 
         self.dataset_name=dataset_name
         self.dataset=dataset
@@ -45,6 +46,8 @@ class Training_Setup:
         self.ferryman_hidden_dim=ferryman_hidden_dim
         self.calc_latent_loss=calc_latent_loss
         self.calc_recon_loss=calc_recon_loss
+        self.use_sinkhorn_recon_loss=use_sinkhorn_recon_loss
+        self.use_sinkhorn_latent_loss=use_sinkhorn_latent_loss
         #self.killer_func = killer_func
 
         #assert self.hidden_dim > dataset.input_dim, "The network hidden size should be bigger than the dimension of the state space"        
